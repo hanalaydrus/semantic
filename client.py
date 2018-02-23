@@ -35,16 +35,22 @@ class ClientDensity(threading.Thread):
     self.camera_id = camera_id
     self.threadName = threadName
     self.queue = queue
-  
-  def run(self):
-    if exitFlag:
-      self.threadName.exit()
+
     channel = grpc.insecure_channel(self.ipaddress)
     stub = densityContract_pb2_grpc.GreeterStub(channel)
     response = stub.SayHello(densityContract_pb2.HelloRequest(id=self.camera_id))
-    for resp in response:
-      # print('Density : '+ resp.response)
+
+    self.response = response
+
+  def run(self):
+    if exitFlag:
+      self.threadName.exit()
+    for resp in self.response:
+      print('Density : '+ resp.response)
       self.queue.put({'density': resp.response})
+  
+  def stop(self):
+    self.response.cancel()
 
 class ClientVolume(threading.Thread):
   def __init__(self, camera_id, ipaddress, threadName, queue=None):
@@ -53,12 +59,18 @@ class ClientVolume(threading.Thread):
     self.camera_id = camera_id
     self.threadName = threadName
     self.queue = queue
-  
-  def run(self):
-    if exitFlag:
-      self.threadName.exit()
+
     channel = grpc.insecure_channel(self.ipaddress)
     stub = volumeContract_pb2_grpc.GreeterStub(channel)
     response = stub.SayHello(volumeContract_pb2.HelloRequest(id=self.camera_id))
-    for resp in response:
+
+    self.response = response
+
+  def run(self):
+    if exitFlag:
+      self.threadName.exit()
+    for resp in self.response:
       self.queue.put({'volume': resp.volume, 'percentage': resp.percentage})
+
+  def stop(self):
+    self.response.cancel()

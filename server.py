@@ -30,10 +30,12 @@ import semanticContract_pb2
 import semanticContract_pb2_grpc
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+exitFlag = 0
 
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
+        print("Hello")
         # model get camera data
         model_camera = Model.run(request.id)
 
@@ -47,7 +49,19 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         client_volume = ClientVolume(request.id, "localhost:50051", "client_volume", queue=client_volume_queue)
         client_volume.start()
 
+        def join_thread():
+            print("join it")
+            client_density.stop()
+            client_volume.stop()
+            
+            client_density.join()
+            client_volume.join()
+
+        context.add_callback(join_thread)
+
         while True:
+            if context.is_active():
+                print("active")
             density_queue = client_density_queue.get()
             volume_queue = client_volume_queue.get()
 
@@ -66,11 +80,15 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
             
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 
+
 class Server(threading.Thread):
-    def __init__(self):
+    def __init__(self, threadName):
         threading.Thread.__init__(self)
+        self.threadName = threadName
 
     def run(self):
+        if exitFlag:
+            self.threadName.exit()
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         semanticContract_pb2_grpc.add_GreeterServicer_to_server(Greeter(), server)
         server.add_insecure_port('[::]:50049')
