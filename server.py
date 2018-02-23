@@ -14,11 +14,12 @@
 
 """The Python implementation of the GRPC helloworld.Greeter server."""
 
-from queue import Queue
+from queue import LifoQueue
 from concurrent import futures
 
 from client import ClientDensity, ClientVolume 
 from weather import Weather
+from model import Model
 
 import time
 import threading
@@ -34,29 +35,36 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
         # model get camera data
+        model_camera = Model.run(request.id)
 
         # thread client density
-        client_density_queue = Queue()
+        client_density_queue = LifoQueue()
         client_density = ClientDensity(request.id, "localhost:50050", "client_density", queue=client_density_queue)
         client_density.start()
 
         # thread client volume
-        client_volume_queue = Queue()
+        client_volume_queue = LifoQueue()
         client_volume = ClientVolume(request.id, "localhost:50051", "client_volume", queue=client_volume_queue)
         client_volume.start()
 
-        # thread weather
         while True:
             density_queue = client_density_queue.get()
             volume_queue = client_volume_queue.get()
-            
-            if (volume_queue['percentage'] > 0) :
-                sentence = ("Jalan X terpantau %s. Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (density_queue['density'], volume_queue['percentage']))
-            elif (volume_queue['percentage'] < 0) :
-                sentence = ("Jalan X terpantau %s. Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (density_queue['density'], volume_queue['percentage']))
 
-            print (sentence)
-            yield semanticContract_pb2.HelloReply(response='%s!' % sentence)
+            # current_weather = Weather.run(model_camera['latitude'],model_camera['longitude'])
+            # if "hujan" in current_weather.lower():
+            #     sentence = ("Hujan mengguyur %s. Arus lalu lintas terpantau %s." % (model_camera['street_name'], density_queue['density'].lower() ))
+            # else:
+            sentence = ("%s terpantau %s." % (model_camera['street_name'], density_queue['density'].lower() ))
+
+            if (volume_queue['percentage'] > 0) :
+                sentence = sentence + (" Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
+            elif (volume_queue['percentage'] == 0) :
+                sentence = sentence + (" Volume lalu lintas normal.")
+            else:
+                sentence = sentence + (" Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
+            
+            yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 
 class Server(threading.Thread):
     def __init__(self):

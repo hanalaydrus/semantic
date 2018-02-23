@@ -61,5 +61,4 @@ class ClientVolume(threading.Thread):
     stub = volumeContract_pb2_grpc.GreeterStub(channel)
     response = stub.SayHello(volumeContract_pb2.HelloRequest(id=self.camera_id))
     for resp in response:
-      # print(self.name +' '+ resp.timestamp +' '+ resp.volume+' '+ resp.percentage)
       self.queue.put({'volume': resp.volume, 'percentage': resp.percentage})
