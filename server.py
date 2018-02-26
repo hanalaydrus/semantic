@@ -35,7 +35,6 @@ exitFlag = 0
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
-        print("Hello")
         # model get camera data
         model_camera = Model.run(request.id)
 
@@ -49,34 +48,65 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         client_volume = ClientVolume(request.id, "localhost:50051", "client_volume", queue=client_volume_queue)
         client_volume.start()
 
+        # thread client volume
+        client_weather_queue = LifoQueue()
+        client_weather = Weather("client_volume", model_camera['latitude'], model_camera['longitude'], queue=client_weather_queue)
+        client_weather.start()
+
         def join_thread():
-            print("join it")
             client_density.stop()
             client_volume.stop()
+            client_weather.stop()
             
             client_density.join()
             client_volume.join()
+            client_weather.join()
 
         context.add_callback(join_thread)
 
         while True:
-            if context.is_active():
-                print("active")
             density_queue = client_density_queue.get()
             volume_queue = client_volume_queue.get()
+            weather_queue = client_weather_queue.get()
 
-            # current_weather = Weather.run(model_camera['latitude'],model_camera['longitude'])
-            # if "hujan" in current_weather.lower():
-            #     sentence = ("Hujan mengguyur %s. Arus lalu lintas terpantau %s." % (model_camera['street_name'], density_queue['density'].lower() ))
-            # else:
-            sentence = ("%s terpantau %s." % (model_camera['street_name'], density_queue['density'].lower() ))
+            current_weather = weather_queue['weather']
 
-            if (volume_queue['percentage'] > 0) :
-                sentence = sentence + (" Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
-            elif (volume_queue['percentage'] == 0) :
-                sentence = sentence + (" Volume lalu lintas normal.")
+            if density_queue['density'] == 'timeout' and volume_queue['percentage'] != 'timeout':
+                if "hujan" in current_weather.lower():
+                    if (volume_queue['percentage'] > 0) :
+                        sentence = ("Hujan mengguyur %s. Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera['street_name'], volume_queue['percentage']))
+                    elif (volume_queue['percentage'] == 0) :
+                        sentence = ("Hujan mengguyur %s. volume lalu lintas terpantau normal.")
+                    else:
+                        sentence = ("Hujan mengguyur %s. terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera['street_name'], volume_queue['percentage']))
+                else:
+                    if (volume_queue['percentage'] > 0) :
+                        sentence = ("Pada %s, terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera['street_name'], volume_queue['percentage']))
+                    elif (volume_queue['percentage'] == 0) :
+                        sentence = ("Pada %s, volume lalu lintas terpantau normal.")
+                    else:
+                        sentence = ("Pada %s, terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera['street_name'], volume_queue['percentage']))
+            
+            elif density_queue['density'] != 'timeout' and volume_queue['percentage'] == 'timeout':
+                if "hujan" in current_weather.lower():
+                    sentence = ("Hujan mengguyur %s. Arus lalu lintas terpantau %s." % (model_camera['street_name'], density_queue['density'].lower() ))
+                else:
+                 sentence = ("%s terpantau %s." % (model_camera['street_name'], density_queue['density'].lower() ))
+            
             else:
-                sentence = sentence + (" Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
+                #########
+                if "hujan" in current_weather.lower():
+                    sentence = ("Hujan mengguyur %s. Arus lalu lintas terpantau %s." % (model_camera['street_name'], density_queue['density'].lower() ))
+                else:
+                    sentence = ("%s terpantau %s." % (model_camera['street_name'], density_queue['density'].lower() ))
+                ########
+                if (volume_queue['percentage'] > 0) :
+                    sentence = sentence + ("Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
+                elif (volume_queue['percentage'] == 0) :
+                    sentence = sentence + ("Volume lalu lintas normal.")
+                else:
+                    sentence = sentence + ("Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
+            
             
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 

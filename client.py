@@ -15,7 +15,7 @@
 """The Python implementation of the GRPC helloworld.Greeter client."""
 
 from __future__ import print_function
-
+from queue import LifoQueue
 import grpc
 import threading
 import time
@@ -35,22 +35,37 @@ class ClientDensity(threading.Thread):
     self.camera_id = camera_id
     self.threadName = threadName
     self.queue = queue
-
-    channel = grpc.insecure_channel(self.ipaddress)
-    stub = densityContract_pb2_grpc.GreeterStub(channel)
-    response = stub.SayHello(densityContract_pb2.HelloRequest(id=self.camera_id))
-
-    self.response = response
+    self.response = None
 
   def run(self):
     if exitFlag:
       self.threadName.exit()
-    for resp in self.response:
-      print('Density : '+ resp.response)
-      self.queue.put({'density': resp.response})
+    #Create connection
+    channel = grpc.insecure_channel(self.ipaddress)
+    while True:
+      try:
+        grpc.channel_ready_future(channel).result(timeout=5)
+      except grpc.FutureTimeoutError:
+        self.queue.put({'density': 'timeout'})
+        self.response = None
+      else:
+        stub = densityContract_pb2_grpc.GreeterStub(channel)
+        response = stub.SayHello(densityContract_pb2.HelloRequest(id=self.camera_id))
+        self.response = response
+        try:
+          for resp in self.response:
+            self.queue.put({'density': resp.response})
+        except grpc.RpcError as e:
+          if e.code() == grpc.StatusCode.CANCELLED:
+            print('cancelled')
+            break
+          elif e.code() == grpc.StatusCode.UNAVAILABLE:
+            print('unavailable')
+            continue
   
   def stop(self):
-    self.response.cancel()
+    if self.response:
+      self.response.cancel()
 
 class ClientVolume(threading.Thread):
   def __init__(self, camera_id, ipaddress, threadName, queue=None):
@@ -59,18 +74,34 @@ class ClientVolume(threading.Thread):
     self.camera_id = camera_id
     self.threadName = threadName
     self.queue = queue
-
-    channel = grpc.insecure_channel(self.ipaddress)
-    stub = volumeContract_pb2_grpc.GreeterStub(channel)
-    response = stub.SayHello(volumeContract_pb2.HelloRequest(id=self.camera_id))
-
-    self.response = response
+    self.response = None
 
   def run(self):
     if exitFlag:
       self.threadName.exit()
-    for resp in self.response:
-      self.queue.put({'volume': resp.volume, 'percentage': resp.percentage})
+    #Create connection
+    channel = grpc.insecure_channel(self.ipaddress)
+    while True:
+      try:
+        grpc.channel_ready_future(channel).result(timeout=5)
+      except grpc.FutureTimeoutError:
+        self.queue.put({'percentage': 'timeout'})
+        self.response = None
+      else:
+        stub = volumeContract_pb2_grpc.GreeterStub(channel)
+        response = stub.SayHello(volumeContract_pb2.HelloRequest(id=self.camera_id))
+        self.response = response
+        try:
+          for resp in self.response:
+            self.queue.put({'volume': resp.volume, 'percentage': resp.percentage})
+        except grpc.RpcError as e:
+          if e.code() == grpc.StatusCode.CANCELLED:
+            print('cancelled')
+            break
+          elif e.code() == grpc.StatusCode.UNAVAILABLE:
+            print('unavailable')
+            continue
 
   def stop(self):
-    self.response.cancel()
+    if self.response != None:
+      self.response.cancel()
