@@ -14,7 +14,7 @@
 
 """The Python implementation of the GRPC helloworld.Greeter server."""
 
-from queue import LifoQueue
+from Queue import LifoQueue
 from concurrent import futures
 
 from client import ClientDensity, ClientVolume 
@@ -36,16 +36,17 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
         # model get camera data
-        model_camera = Model.run(request.id)
+        model = Model()
+        model_camera = model.request_data(request.id)
 
         # thread client density
         client_density_queue = LifoQueue()
-        client_density = ClientDensity(request.id, "localhost:50050", "client_density", queue=client_density_queue)
+        client_density = ClientDensity(request.id, "density-service:50050", "client_density", queue=client_density_queue)
         client_density.start()
 
         # thread client volume
         client_volume_queue = LifoQueue()
-        client_volume = ClientVolume(request.id, "localhost:50051", "client_volume", queue=client_volume_queue)
+        client_volume = ClientVolume(request.id, "volume-service:50051", "client_volume", queue=client_volume_queue)
         client_volume.start()
 
         # thread client volume
@@ -107,7 +108,7 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
                 else:
                     sentence = sentence + ("Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
             
-            
+            print('response=%s' % sentence)
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 
 
@@ -121,8 +122,11 @@ class Server(threading.Thread):
             self.threadName.exit()
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         semanticContract_pb2_grpc.add_GreeterServicer_to_server(Greeter(), server)
+
         server.add_insecure_port('[::]:50049')
         server.start()
+
+        print("server listening on port 50049")
               
         try:
             while True:

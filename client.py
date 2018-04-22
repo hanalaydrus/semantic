@@ -15,7 +15,7 @@
 """The Python implementation of the GRPC helloworld.Greeter client."""
 
 from __future__ import print_function
-from queue import LifoQueue
+from Queue import LifoQueue
 import grpc
 import threading
 import time

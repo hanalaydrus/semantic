@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  semantic-service:
+    build: .
+    container_name: semantic-service
+    external_links:
+      - camera-service
+      - density-service
+      - volume-service
+#    ports:
+#      - "50049:50049"
+    restart: always
+    networks:
+      - default
+      - camera_default
+      - volumeofvehiclescpp_default
+      - densityofvehicles_default
+
+networks:
+  camera_default:
+    external: true
+  volumeofvehiclescpp_default:
+    external: true
+  densityofvehicles_default:
+    external: true
+
