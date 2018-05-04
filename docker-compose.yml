@@ -14,14 +14,14 @@ services:
     networks:
       - default
       - camera_default
-      - volumeofvehiclescpp_default
-      - densityofvehicles_default
+      - volume-of-vehicles-cpp_default
+      - density-of-vehicles_default
 
 networks:
   camera_default:
     external: true
-  volumeofvehiclescpp_default:
+  volume-of-vehicles-cpp_default:
     external: true
-  densityofvehicles_default:
+  density-of-vehicles_default:
     external: true
 
