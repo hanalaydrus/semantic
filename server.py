@@ -108,7 +108,6 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
                 else:
                     sentence = sentence + ("Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
             
-            print('response=%s' % sentence)
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 
 
