@@ -62,6 +62,8 @@ class ClientDensity(threading.Thread):
           elif e.code() == grpc.StatusCode.UNAVAILABLE:
             print('unavailable')
             continue
+          else:
+            print("density error")
   
   def stop(self):
     if self.response:
@@ -101,6 +103,8 @@ class ClientVolume(threading.Thread):
           elif e.code() == grpc.StatusCode.UNAVAILABLE:
             print('unavailable')
             continue
+          else:
+            print("volume error")
 
   def stop(self):
     if self.response != None:

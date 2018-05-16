@@ -16,6 +16,7 @@
 
 from Queue import LifoQueue
 from concurrent import futures
+from datetime import datetime
 
 from client import ClientDensity, ClientVolume 
 from weather import Weather
@@ -23,6 +24,8 @@ from model import Model
 
 import time
 import threading
+import string
+import random
 
 import grpc
 
@@ -31,10 +34,17 @@ import semanticContract_pb2_grpc
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 exitFlag = 0
+concurrent = 0
+log = []
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
 
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
-
     def SayHello(self, request, context):
+        global concurrent
+        concurrent = concurrent + 1
+        random_id = str(request.id) + id_generator(3, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
         # model get camera data
         model = Model()
         model_camera = model.request_data(request.id)
@@ -55,6 +65,8 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         client_weather.start()
 
         def join_thread():
+            global concurrent
+            concurrent = concurrent - 1
             client_density.stop()
             client_volume.stop()
             client_weather.stop()
@@ -65,7 +77,9 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
         context.add_callback(join_thread)
 
-        while True:
+        # while True:
+        for x in range(0,1000):
+            print ("stream %d" % x)
             density_queue = client_density_queue.get()
             volume_queue = client_volume_queue.get()
             weather_queue = client_weather_queue.get()
@@ -108,7 +122,13 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
                 else:
                     sentence = sentence + ("Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
             
+            log.append([random_id, datetime.utcnow(), concurrent])
+            
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
+
+        join_thread()
+        print(log)
+
 
 
 class Server(threading.Thread):
