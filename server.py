@@ -26,7 +26,7 @@ import time
 import threading
 import string
 import random
-
+import logging
 import grpc
 
 import semanticContract_pb2
@@ -35,7 +35,8 @@ import semanticContract_pb2_grpc
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 exitFlag = 0
 concurrent = 0
-log = []
+
+logging.basicConfig(filename='info.log',level=logging.INFO)
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
@@ -77,9 +78,7 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
         context.add_callback(join_thread)
 
-        # while True:
         for x in range(0,1000):
-            print ("stream %d" % x)
             density_queue = client_density_queue.get()
             volume_queue = client_volume_queue.get()
             weather_queue = client_weather_queue.get()
@@ -122,14 +121,12 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
                 else:
                     sentence = sentence + ("Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
             
-            log.append([random_id, datetime.utcnow(), concurrent])
-            
+            logging.info("%s %s %s", random_id, datetime.utcnow(), str(concurrent))
+
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 
+        print("finish logging cc: %d" % concurrent)
         join_thread()
-        print(log)
-
-
 
 class Server(threading.Thread):
     def __init__(self, threadName):
