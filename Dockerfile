@@ -9,6 +9,8 @@ RUN pip install Flask grpcio grpcio-tools mysql-connector requests
 COPY . /app
 WORKDIR /app
 
+RUN make build
+
 EXPOSE 50049
 
 CMD ["make","run"]

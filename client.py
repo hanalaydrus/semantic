@@ -15,7 +15,7 @@
 """The Python implementation of the GRPC helloworld.Greeter client."""
 
 from __future__ import print_function
-from Queue import LifoQueue
+from Queue import LifoQueue, Full
 import grpc
 import threading
 import time
@@ -43,6 +43,11 @@ class ClientDensity(threading.Thread):
     #Create connection
     channel = grpc.insecure_channel(self.ipaddress)
     while True:
+      # try:
+      #   self.queue.put_nowait({'density': "Lancar"})
+      # except Full:
+      #   # print('dropped density')
+      #   continue
       try:
         grpc.channel_ready_future(channel).result(timeout=5)
       except grpc.FutureTimeoutError:
@@ -54,7 +59,10 @@ class ClientDensity(threading.Thread):
         self.response = response
         try:
           for resp in self.response:
-            self.queue.put({'density': resp.response})
+            try:
+              self.queue.put_nowait({'density': resp.response})
+            except Full:
+              continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
             print('cancelled')
@@ -64,7 +72,7 @@ class ClientDensity(threading.Thread):
             continue
   
   def stop(self):
-    if self.response:
+    if self.response != None:
       self.response.cancel()
 
 class ClientVolume(threading.Thread):
@@ -82,6 +90,11 @@ class ClientVolume(threading.Thread):
     #Create connection
     channel = grpc.insecure_channel(self.ipaddress)
     while True:
+      # try:
+      #   self.queue.put_nowait({'volume': 0, 'percentage': 10})
+      # except Full:
+      #   # print('dropped volume')
+      #   continue
       try:
         grpc.channel_ready_future(channel).result(timeout=5)
       except grpc.FutureTimeoutError:
@@ -93,7 +106,10 @@ class ClientVolume(threading.Thread):
         self.response = response
         try:
           for resp in self.response:
-            self.queue.put({'volume': resp.volume, 'percentage': resp.percentage})
+            try:
+              self.queue.put({'volume': resp.volume, 'percentage': resp.percentage})
+            except Full:
+              continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
             print('cancelled')
