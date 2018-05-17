@@ -43,11 +43,6 @@ class ClientDensity(threading.Thread):
     #Create connection
     channel = grpc.insecure_channel(self.ipaddress)
     while True:
-      # try:
-      #   self.queue.put_nowait({'density': "Lancar"})
-      # except Full:
-      #   # print('dropped density')
-      #   continue
       try:
         grpc.channel_ready_future(channel).result(timeout=5)
       except grpc.FutureTimeoutError:
@@ -90,11 +85,6 @@ class ClientVolume(threading.Thread):
     #Create connection
     channel = grpc.insecure_channel(self.ipaddress)
     while True:
-      # try:
-      #   self.queue.put_nowait({'volume': 0, 'percentage': 10})
-      # except Full:
-      #   # print('dropped volume')
-      #   continue
       try:
         grpc.channel_ready_future(channel).result(timeout=5)
       except grpc.FutureTimeoutError:
