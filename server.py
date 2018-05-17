@@ -50,17 +50,17 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         model_camera = model.request_data(request.id)
 
         # thread client density
-        client_density_queue = LifoQueue()
+        client_density_queue = LifoQueue(1)
         client_density = ClientDensity(request.id, "density-service:50050", "client_density", queue=client_density_queue)
         client_density.start()
 
         # thread client volume
-        client_volume_queue = LifoQueue()
+        client_volume_queue = LifoQueue(1)
         client_volume = ClientVolume(request.id, "volume-service:50051", "client_volume", queue=client_volume_queue)
         client_volume.start()
 
         # thread client volume
-        client_weather_queue = LifoQueue()
+        client_weather_queue = LifoQueue(1)
         client_weather = Weather("client_volume", model_camera['latitude'], model_camera['longitude'], queue=client_weather_queue)
         client_weather.start()
 
