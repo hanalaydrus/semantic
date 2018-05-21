@@ -38,26 +38,24 @@ concurrent = 0
 
 logging.basicConfig(filename='info.log',level=logging.INFO)
 
-def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(size))
-
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
     def SayHello(self, request, context):
         global concurrent
         concurrent = concurrent + 1
-        random_id = str(request.id) + id_generator(3, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+        camera_id = request.id % 10
+        random_id = str(request.id)
         # model get camera data
         model = Model()
-        model_camera = model.request_data(request.id)
+        model_camera = model.request_data(camera_id)
 
         # thread client density
         client_density_queue = LifoQueue(1)
-        client_density = ClientDensity(request.id, "density-service:50050", "client_density", queue=client_density_queue)
+        client_density = ClientDensity(camera_id, "density-service:50050", "client_density", queue=client_density_queue)
         client_density.start()
 
         # thread client volume
         client_volume_queue = LifoQueue(1)
-        client_volume = ClientVolume(request.id, "volume-service:50051", "client_volume", queue=client_volume_queue)
+        client_volume = ClientVolume(camera_id, "volume-service:50051", "client_volume", queue=client_volume_queue)
         client_volume.start()
 
         # thread client volume
