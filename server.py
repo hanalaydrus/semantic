@@ -38,6 +38,9 @@ concurrent = 0
 
 logging.basicConfig(filename='info.log',level=logging.INFO)
 
+def TimestampMillisec64():
+    return int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * 1000)
+
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
     def SayHello(self, request, context):
         global concurrent
@@ -119,7 +122,7 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
                 else:
                     sentence = sentence + ("Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
             
-            logging.info("%s %s %s", random_id, datetime.utcnow(), str(concurrent))
+            logging.info("%s %s %s", random_id, TimestampMillisec64(), str(concurrent))
 
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 
