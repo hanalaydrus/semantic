@@ -36,7 +36,7 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 exitFlag = 0
 concurrent = 0
 
-logging.basicConfig(filename='info.log',level=logging.INFO)
+
 
 def TimestampMillisec64():
     return int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * 1000)
@@ -44,6 +44,9 @@ def TimestampMillisec64():
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
     def SayHello(self, request, context):
         global concurrent
+
+        logging.basicConfig(filename='info.log',level=logging.INFO)
+        
         concurrent = concurrent + 1
         camera_id = request.id % 10
         random_id = str(request.id)
