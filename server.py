@@ -128,7 +128,6 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         numpy.savetxt("cc"+random_id+".csv", a, fmt="%s", delimiter=",")
         print("finish logging cc: %d" % concurrent)
         concurrent = concurrent - 1
-        join_thread()
 
 class Server(threading.Thread):
     def __init__(self, threadName):
