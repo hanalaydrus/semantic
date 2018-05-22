@@ -46,8 +46,11 @@ class ClientDensity(threading.Thread):
       try:
         grpc.channel_ready_future(channel).result(timeout=5)
       except grpc.FutureTimeoutError:
-        self.queue.put({'density': 'timeout'})
         self.response = None
+        try:
+          self.queue.put_nowait({'density': 'timeout'})
+        except Full:
+          continue;
       else:
         stub = densityContract_pb2_grpc.GreeterStub(channel)
         response = stub.SayHello(densityContract_pb2.HelloRequest(id=self.camera_id))
@@ -60,10 +63,10 @@ class ClientDensity(threading.Thread):
               continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
-            print('cancelled')
+            print('density cancelled')
             break
           elif e.code() == grpc.StatusCode.UNAVAILABLE:
-            print('unavailable')
+            print('density unavailable')
             continue
           else:
             print("density error")
@@ -90,8 +93,11 @@ class ClientVolume(threading.Thread):
       try:
         grpc.channel_ready_future(channel).result(timeout=5)
       except grpc.FutureTimeoutError:
-        self.queue.put({'percentage': 'timeout'})
         self.response = None
+        try:
+          self.queue.put_nowait({'percentage': 'timeout'})
+        except Full:
+          continue
       else:
         stub = volumeContract_pb2_grpc.GreeterStub(channel)
         response = stub.SayHello(volumeContract_pb2.HelloRequest(id=self.camera_id))
@@ -99,15 +105,15 @@ class ClientVolume(threading.Thread):
         try:
           for resp in self.response:
             try:
-              self.queue.put({'volume': resp.volume, 'percentage': resp.percentage})
+              self.queue.put_nowait({'volume': resp.volume, 'percentage': resp.percentage})
             except Full:
               continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
-            print('cancelled')
+            print('volume cancelled')
             break
           elif e.code() == grpc.StatusCode.UNAVAILABLE:
-            print('unavailable')
+            print('volume unavailable')
             continue
           else:
             print("volume error")
