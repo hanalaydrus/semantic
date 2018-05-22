@@ -74,6 +74,7 @@ class ClientDensity(threading.Thread):
   def stop(self):
     if self.response != None:
       self.response.cancel()
+      self.response = None
 
 class ClientVolume(threading.Thread):
   def __init__(self, camera_id, ipaddress, threadName, queue=None):
@@ -121,3 +122,4 @@ class ClientVolume(threading.Thread):
   def stop(self):
     if self.response != None:
       self.response.cancel()
+      self.response = None
