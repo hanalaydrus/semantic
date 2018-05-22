@@ -137,7 +137,7 @@ class Server(threading.Thread):
     def run(self):
         if exitFlag:
             self.threadName.exit()
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=21))
         semanticContract_pb2_grpc.add_GreeterServicer_to_server(Greeter(), server)
 
         server.add_insecure_port('[::]:50049')
