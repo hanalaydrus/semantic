@@ -67,8 +67,6 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         client_weather.start()
 
         def join_thread():
-            global concurrent
-            concurrent = concurrent - 1
             client_density.stop()
             client_volume.stop()
             client_weather.stop()
@@ -129,6 +127,7 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         a = numpy.asarray(log)
         numpy.savetxt("cc"+random_id+".csv", a, fmt="%s", delimiter=",")
         print("finish logging cc: %d" % concurrent)
+        concurrent = concurrent - 1
         join_thread()
 
 class Server(threading.Thread):
