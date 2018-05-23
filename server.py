@@ -43,6 +43,7 @@ def TimestampMillisec64():
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
     def SayHello(self, request, context):
         global concurrent
+        i = 0
         log = []
         concurrent = concurrent + 1
         camera_id = request.id % 10
@@ -77,7 +78,7 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
         context.add_callback(join_thread)
 
-        for x in range(0,1000):
+        while True:
             density_queue = client_density_queue.get()
             volume_queue = client_volume_queue.get()
             weather_queue = client_weather_queue.get()
@@ -119,15 +120,18 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
                     sentence = sentence + ("Volume lalu lintas normal.")
                 else:
                     sentence = sentence + ("Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_queue['percentage']))
-            
-            log.append([random_id, TimestampMillisec64(), str(concurrent)])
 
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 
-        a = numpy.asarray(log)
-        numpy.savetxt("cc"+random_id+".csv", a, fmt="%s", delimiter=",")
-        print("finish logging cc: %d" % concurrent)
-        concurrent = concurrent - 1
+            log.append([random_id, TimestampMillisec64(), str(concurrent)])
+            i = i + 1
+            if i == 1000:
+                a = numpy.asarray(log)
+                numpy.savetxt("cc"+random_id+".csv", a, fmt="%s", delimiter=",")
+                print("finish logging cc: %d" % concurrent)
+                concurrent = concurrent - 1
+
+        
 
 class Server(threading.Thread):
     def __init__(self, threadName):
