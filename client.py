@@ -50,7 +50,8 @@ class ClientDensity(threading.Thread):
         try:
           self.queue.put_nowait({'density': 'timeout'})
         except Full:
-          continue;
+          continue
+
       else:
         stub = densityContract_pb2_grpc.GreeterStub(channel)
         response = stub.SayHello(densityContract_pb2.HelloRequest(id=self.camera_id))
