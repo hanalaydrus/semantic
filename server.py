@@ -42,12 +42,16 @@ def TimestampMillisec64():
 
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
     def SayHello(self, request, context):
+        t1= TimestampMillisec64()
         global concurrent
         i = 0
         log = []
         concurrent = concurrent + 1
         camera_id = request.id % 10
         random_id = str(request.id)
+
+        print("finish logging cc: %d, id: %s" % (concurrent, random_id))
+
         # model get camera data
         model = Model()
         model_camera = model.request_data(camera_id)
@@ -77,12 +81,13 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
             client_weather.join()
 
         context.add_callback(join_thread)
-
+        t2 = TimestampMillisec64()
         while True:
+            t3 = TimestampMillisec64()
             density_queue = client_density_queue.get()
             volume_queue = client_volume_queue.get()
             weather_queue = client_weather_queue.get()
-
+            t4 = TimestampMillisec64()
             current_weather = weather_queue['weather']
 
             if density_queue['density'] == 'timeout' and volume_queue['percentage'] != 'timeout':
@@ -123,7 +128,9 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 
-            log.append([random_id, TimestampMillisec64(), str(concurrent)])
+            t5 = TimestampMillisec64()
+
+            log.append([random_id, t1, t2, t3, t4, t5, str(concurrent)])
             i = i + 1
             if i == 1000:
                 a = numpy.asarray(log)
