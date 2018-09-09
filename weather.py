@@ -21,8 +21,6 @@ class Weather(threading.Thread):
         self.startService = True
 
     def run(self):
-        if exitFlag:
-            self.threadName.exit()
         while self.startService:
             if self.startRequest:
                 try:
@@ -56,7 +54,7 @@ class Weather(threading.Thread):
                 else:
                     print('Request Location Key Failed')
                 self.startRequest = False
-                t = threading.Timer(600, set_start_request(self.startRequest))
+                t = threading.Timer(600, set_start_request, args=(self.startRequest,))
                 t.start()
             try:
                 self.queue.put_nowait({'weather': self.weather})
@@ -64,4 +62,5 @@ class Weather(threading.Thread):
                 continue
 
     def stop(self):
+        print('stop weather request!')
         self.startService = False

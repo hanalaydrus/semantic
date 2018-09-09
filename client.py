@@ -38,8 +38,6 @@ class ClientDensity(threading.Thread):
     self.response = None
 
   def run(self):
-    if exitFlag:
-      self.threadName.exit()
     #Create connection
     channel = grpc.insecure_channel(self.ipaddress)
     while True:
@@ -71,6 +69,7 @@ class ClientDensity(threading.Thread):
   
   def stop(self):
     if self.response != None:
+      print('stop density camera %d!' % (self.camera_id))
       self.response.cancel()
 
 class ClientVolume(threading.Thread):
@@ -83,8 +82,6 @@ class ClientVolume(threading.Thread):
     self.response = None
 
   def run(self):
-    if exitFlag:
-      self.threadName.exit()
     #Create connection
     channel = grpc.insecure_channel(self.ipaddress)
     while True:
@@ -116,4 +113,5 @@ class ClientVolume(threading.Thread):
 
   def stop(self):
     if self.response != None:
+      print('stop volume camera %d!' % (self.camera_id))
       self.response.cancel()

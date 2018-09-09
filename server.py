@@ -67,7 +67,6 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         x=0
         while True:
             x = x+1
-            print("stream %d" % x)
             density_queue = client_density_queue.get()
             volume_queue = client_volume_queue.get()
             weather_queue = client_weather_queue.get()
