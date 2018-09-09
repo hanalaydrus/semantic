@@ -30,12 +30,21 @@ import semanticContract_pb2
 import semanticContract_pb2_grpc
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
-exitFlag = 0
+myLock = threading.Lock()
+connection_count = 0
 
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
         # model get camera data
+        global connection_count
+        connection_count = connection_count + 1
+
+        myLock.acquire(True)
+        print("connection_count: %d" % (connection_count))
+        myLock.release()
+
+        start_service = True
         model = Model()
         model_camera = model.request_data(request.id)
 
@@ -54,6 +63,11 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         client_weather = Weather("client_volume", model_camera['latitude'], model_camera['longitude'], queue=client_weather_queue)
         client_weather.start()
 
+        myLock.acquire(True)
+        print("3-thread active: %d" % (threading.active_count()))
+        print(threading.enumerate())
+        myLock.release()
+
         def join_thread():
             client_density.stop()
             client_volume.stop()
@@ -63,10 +77,16 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
             client_volume.join()
             client_weather.join()
 
+            myLock.acquire(True)
+            print("4-thread active: %d" % (threading.active_count()))
+            print(threading.enumerate())
+            myLock.release()
+
+            start_service = False
+
         context.add_callback(join_thread)
-        x=0
-        while True:
-            x = x+1
+        
+        while start_service:
             density_queue = client_density_queue.get()
             volume_queue = client_volume_queue.get()
             weather_queue = client_weather_queue.get()
@@ -111,6 +131,8 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
             
             yield semanticContract_pb2.HelloReply(response='%s' % sentence)
 
+        connection_count = connection_count - 1
+
 
 class Server(threading.Thread):
     def __init__(self, threadName):
@@ -118,15 +140,18 @@ class Server(threading.Thread):
         self.threadName = threadName
 
     def run(self):
-        if exitFlag:
-            self.threadName.exit()
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=20))
         semanticContract_pb2_grpc.add_GreeterServicer_to_server(Greeter(), server)
 
         server.add_insecure_port('[::]:50049')
         server.start()
 
         print("server listening on port 50049")
+
+        myLock.acquire(True)
+        print("2-thread active: %d" % (threading.active_count()))
+        print(threading.enumerate())
+        myLock.release()
               
         try:
             while True:

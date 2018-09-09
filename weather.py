@@ -3,7 +3,6 @@ import requests
 import threading
 import time
 
-
 exitFlag = 0
 
 def set_start_request(startRequest):
@@ -19,6 +18,7 @@ class Weather(threading.Thread):
         self.startRequest = True
         self.weather = "unavailable"
         self.startService = True
+        self.timer = threading.Timer(600, set_start_request, args=(self.startRequest,))
 
     def run(self):
         while self.startService:
@@ -54,13 +54,12 @@ class Weather(threading.Thread):
                 else:
                     print('Request Location Key Failed')
                 self.startRequest = False
-                t = threading.Timer(600, set_start_request, args=(self.startRequest,))
-                t.start()
+                self.timer.start()
             try:
                 self.queue.put_nowait({'weather': self.weather})
             except Full:
                 continue
 
     def stop(self):
-        print('stop weather request!')
         self.startService = False
+        self.timer.cancel()

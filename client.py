@@ -26,7 +26,7 @@ import densityContract_pb2_grpc
 import volumeContract_pb2
 import volumeContract_pb2_grpc
 
-exitFlag = 0
+myLock = threading.Lock()
 
 class ClientDensity(threading.Thread):
   def __init__(self, camera_id, ipaddress, threadName, queue=None):
@@ -61,15 +61,16 @@ class ClientDensity(threading.Thread):
               continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
-            print('cancelled')
+            myLock.acquire(True)
+            print('density cancelled')
+            myLock.release()
             break
           elif e.code() == grpc.StatusCode.UNAVAILABLE:
-            print('unavailable')
+            print('density unavailable')
             continue
   
   def stop(self):
     if self.response != None:
-      print('stop density camera %d!' % (self.camera_id))
       self.response.cancel()
 
 class ClientVolume(threading.Thread):
@@ -105,13 +106,14 @@ class ClientVolume(threading.Thread):
               continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
-            print('cancelled')
+            myLock.acquire(True)
+            print('volume cancelled')
+            myLock.release()
             break
           elif e.code() == grpc.StatusCode.UNAVAILABLE:
-            print('unavailable')
+            print('volume unavailable')
             continue
 
   def stop(self):
     if self.response != None:
-      print('stop volume camera %d!' % (self.camera_id))
       self.response.cancel()

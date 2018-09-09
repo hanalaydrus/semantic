@@ -1,8 +1,13 @@
 from server import Server
+import threading
 
 if __name__ == '__main__':
-	
-    serverSemantic = Server("serverSemantic")
+	print("1-thread active: %d" % (threading.active_count()))
+	print(threading.enumerate())
 
-    serverSemantic.start()
+	serverSemantic = Server("serverSemantic")
+
+	serverSemantic.start()
+
+	serverSemantic.join()
     
