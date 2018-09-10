@@ -29,101 +29,96 @@ import semanticContract_pb2
 import semanticContract_pb2_grpc
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
-myLock = threading.Lock()
 
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
-        # while True:
-        #     def join_thread():
-        #         myLock.acquire(True)
-        #         print("finish-thread active: %d" % (threading.active_count()))
-        #         print(threading.enumerate())
-        #         myLock.release()
-
-        #     context.add_callback(join_thread)
-
-        #     yield semanticContract_pb2.HelloReply(response='Hello')
         # model get camera data
         model = Model()
         model_camera = model.request_data(request.id)
 
         # thread client density
-        density_data = {'density' : 'timeout'}
+        density_data = {"density" : "timeout"}
         client_density = ClientDensity(request.id, "density-service:50050", "client_density", density_data)
         client_density.start()
 
         # thread client volume
-        volume_data = {'volume': 'timeout', 'percentage': 'timeout'}
+        volume_data = {"volume": "timeout", "percentage": "timeout"}
         client_volume = ClientVolume(request.id, "volume-service:50051", "client_volume", volume_data)
         client_volume.start()
 
         # thread client volume
-        weather_data = {'weather' : 'unavailable'}
-        client_weather = Weather("client_weather", model_camera['latitude'], model_camera['longitude'], weather_data)
+        weather_data = {"weather" : "unavailable"}
+        client_weather = Weather("client_weather", model_camera["latitude"], model_camera["longitude"], weather_data)
         client_weather.start()
 
-        myLock.acquire(True)
-        print("start-thread active: %d" % (threading.active_count()))
-        print(threading.enumerate())
-        myLock.release()
+        # myLock.acquire(True)
+        # print("start-thread active: %d" % (threading.active_count()))
+        # print(threading.enumerate())
+        # myLock.release()
 
         def join_thread():
             client_density.stop()
             client_volume.stop()
             client_weather.stop()
             
+            client_density.exit()
+            client_volume.exit()
+            client_weather.exit()
+
             client_density.join()
             client_volume.join()
             client_weather.join()
 
-            myLock.acquire(True)
-            print("finish-thread active: %d" % (threading.active_count()))
+            # myLock.acquire(True)
+            # print("finish-thread active: %d" % (threading.active_count()))
             # print(threading.enumerate())
-            myLock.release()
+            # myLock.release()
 
         context.add_callback(join_thread)
         
         while True:
-            current_weather = weather_data['weather']
+            current_weather = weather_data["weather"]
 
-            if density_data['density'] == 'timeout' and volume_data['percentage'] != 'timeout':
+            if density_data["density"] == "timeout" and volume_data["percentage"] != "timeout":
                 if "hujan" in current_weather.lower():
-                    if (volume_data['percentage'] > 0) :
-                        sentence = ("Hujan mengguyur %s. Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera['street_name'], volume_data['percentage']))
-                    elif (volume_data['percentage'] == 0) :
+                    if (volume_data["percentage"] > 0) :
+                        sentence = ("Hujan mengguyur %s. Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera["street_name"], volume_data["percentage"]))
+                    elif (volume_data["percentage"] == 0) :
                         sentence = ("Hujan mengguyur %s. volume lalu lintas terpantau normal.")
                     else:
-                        sentence = ("Hujan mengguyur %s. terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera['street_name'], volume_data['percentage']))
+                        sentence = ("Hujan mengguyur %s. Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera["street_name"], volume_data["percentage"]))
                 else:
-                    if (volume_data['percentage'] > 0) :
-                        sentence = ("Pada %s, terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera['street_name'], volume_data['percentage']))
-                    elif (volume_data['percentage'] == 0) :
+                    if (volume_data["percentage"] > 0) :
+                        sentence = ("Pada %s, terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera["street_name"], volume_data["percentage"]))
+                    elif (volume_data["percentage"] == 0) :
                         sentence = ("Pada %s, volume lalu lintas terpantau normal.")
                     else:
-                        sentence = ("Pada %s, terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera['street_name'], volume_data['percentage']))
+                        sentence = ("Pada %s, terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (model_camera["street_name"], volume_data["percentage"]))
             
-            elif density_data['density'] != 'timeout' and volume_data['percentage'] == 'timeout':
+            elif density_data["density"] != "timeout" and volume_data["percentage"] == "timeout":
                 if "hujan" in current_weather.lower():
-                    sentence = ("Hujan mengguyur %s. Arus lalu lintas terpantau %s." % (model_camera['street_name'], density_data['density'].lower() ))
+                    sentence = ("Hujan mengguyur %s. Arus lalu lintas terpantau %s." % (model_camera["street_name"], density_data["density"].lower() ))
                 else:
-                 sentence = ("%s terpantau %s." % (model_camera['street_name'], density_data['density'].lower() ))
+                 sentence = ("%s terpantau %s." % (model_camera["street_name"], density_data["density"].lower() ))
             
-            else:
+            elif density_data["density"] != "timeout" and volume_data["percentage"] != "timeout":
                 #########
                 if "hujan" in current_weather.lower():
-                    sentence = ("Hujan mengguyur %s. Arus lalu lintas terpantau %s." % (model_camera['street_name'], density_data['density'].lower() ))
+                    sentence = ("Hujan mengguyur %s. Arus lalu lintas terpantau %s." % (model_camera["street_name"], density_data["density"].lower() ))
                 else:
-                    sentence = ("%s terpantau %s." % (model_camera['street_name'], density_data['density'].lower() ))
+                    sentence = ("%s terpantau %s." % (model_camera["street_name"], density_data["density"].lower() ))
                 ########
-                if (volume_data['percentage'] > 0) :
-                    sentence = sentence + ("Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_data['percentage']))
-                elif (volume_data['percentage'] == 0) :
-                    sentence = sentence + ("Volume lalu lintas normal.")
+                if (volume_data["percentage"] > 0) :
+                    sentence = sentence + (" Terjadi kenaikan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_data["percentage"]))
+                elif (volume_data["percentage"] == 0) :
+                    sentence = sentence + (" Volume lalu lintas normal.")
                 else:
-                    sentence = sentence + ("Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_data['percentage']))
-            
-            yield semanticContract_pb2.HelloReply(response='%s' % sentence)
+                    sentence = sentence + (" Terjadi penurunan volume kendaraan sebesar %d persen dibandingkan lalu lintas normal." % (volume_data["percentage"]))
+            else:
+                sentence = ("%s." % (model_camera["street_name"]))
+
+            yield semanticContract_pb2.HelloReply(response="%s" % sentence)
 
 
 class Server(threading.Thread):
@@ -132,11 +127,10 @@ class Server(threading.Thread):
         self.threadName = threadName
 
     def run(self):
-        executor = futures.ThreadPoolExecutor(max_workers=10)
-        server = grpc.server(executor)
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=20))
         semanticContract_pb2_grpc.add_GreeterServicer_to_server(Greeter(), server)
 
-        server.add_insecure_port('[::]:50049')
+        server.add_insecure_port("[::]:50049")
         server.start()
 
         print("server listening on port 50049")
