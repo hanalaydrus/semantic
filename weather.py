@@ -1,8 +1,10 @@
+from Queue import LifoQueue, Full
 import requests
 import threading
 import time
 
 exitFlag = 0
+myLock = threading.Lock()
 
 def set_start_request(startRequest):
     startRequest = True
@@ -26,8 +28,10 @@ class Weather(threading.Thread):
                     requestLocationKey = requests.get("http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=zUAxVR88QcZr5j4hpl4IxMUnuxixTnfd&q="+ self.latitude +","+ self.longitude)
                 except Exception:
                     print("Request Failed, problem with connection")
-                    self.data["weather"] = self.weather
-                    continue
+                    try:
+                        self.data.put_nowait({'weather': self.weather})
+                    except Full:
+                      continue
 
                 if requestLocationKey.status_code == 200:
                     responseLocationKey = requestLocationKey.json()
@@ -36,8 +40,10 @@ class Weather(threading.Thread):
                         requestsCurrentWeather = requests.get("http://dataservice.accuweather.com/currentconditions/v1/"+ locationKey +"?apikey=zUAxVR88QcZr5j4hpl4IxMUnuxixTnfd&language=id-ID")
                     except Exception:
                         print("Request Failed, problem with connection")
-                        self.data["weather"] = self.weather
-                        continue
+                        try:
+                            self.data.put_nowait({'weather': self.weather})
+                        except Full:
+                            continue
 
                     if requestsCurrentWeather.status_code == 200:
                         responseCurrentWeather = requestsCurrentWeather.json()
@@ -48,8 +54,13 @@ class Weather(threading.Thread):
                     print("Request Location Key Failed")
                 self.startRequest = False
                 self.timer.start()
-            self.data["weather"] = self.weather
+
+            try:
+                self.data.put_nowait({'weather': self.weather})
+            except Full:
+                continue
 
     def stop(self):
         self.startService = False
         self.timer.cancel()
+

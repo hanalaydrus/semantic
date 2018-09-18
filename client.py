@@ -17,6 +17,7 @@
 import grpc
 import threading
 import time
+from Queue import LifoQueue, Full
 
 import densityContract_pb2
 import densityContract_pb2_grpc
@@ -43,14 +44,20 @@ class ClientDensity(threading.Thread):
         grpc.channel_ready_future(channel).result(timeout=5)
       except grpc.FutureTimeoutError:
         self.response = None
-        self.data["density"] = "timeout"
+        try:
+          self.data.put_nowait({'density': 'timeout'})
+        except Full:
+          continue
       else:
         stub = densityContract_pb2_grpc.GreeterStub(channel)
         response = stub.SayHello(densityContract_pb2.HelloRequest(id=self.camera_id))
         self.response = response
         try:
           for resp in self.response:
-            self.data["density"] = resp.response
+            try:
+              self.data.put_nowait({'density': resp.response})
+            except Full:
+              continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
             myLock.acquire(True)
@@ -64,7 +71,7 @@ class ClientDensity(threading.Thread):
   def stop(self):
     if self.response != None:
       self.response.cancel()
-
+      
 class ClientVolume(threading.Thread):
   def __init__(self, camera_id, ipaddress, threadName, data):
     threading.Thread.__init__(self)
@@ -82,15 +89,20 @@ class ClientVolume(threading.Thread):
         grpc.channel_ready_future(channel).result(timeout=5)
       except grpc.FutureTimeoutError:
         self.response = None
-        self.data["percentage"] = "timeout"
+        try:
+          self.data.put_nowait({'percentage': 'timeout'})
+        except Full:
+          continue
       else:
         stub = volumeContract_pb2_grpc.GreeterStub(channel)
         response = stub.SayHello(volumeContract_pb2.HelloRequest(id=self.camera_id))
         self.response = response
         try:
           for resp in self.response:
-            self.data["percentage"] = resp.percentage
-            self.data["volume"] = resp.volume
+            try:
+              self.data.put_nowait({'volume': resp.volume, 'percentage': resp.percentage})
+            except Full:
+              continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
             myLock.acquire(True)

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """The Python implementation of the GRPC helloworld.Greeter server."""
-
+from Queue import Queue
 from concurrent import futures
 
 from client import ClientDensity, ClientVolume 
@@ -30,6 +30,8 @@ import semanticContract_pb2_grpc
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
+myLock = threading.Lock()
+
 class Greeter(semanticContract_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
@@ -38,18 +40,18 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         model_camera = model.request_data(request.id)
 
         # thread client density
-        density_data = {"density" : "timeout"}
-        client_density = ClientDensity(request.id, "density-service:50050", "client_density", density_data)
+        density_queue = Queue(1)
+        client_density = ClientDensity(request.id, "density-service:50050", "client_density", density_queue)
         client_density.start()
 
         # thread client volume
-        volume_data = {"volume": "timeout", "percentage": "timeout"}
-        client_volume = ClientVolume(request.id, "volume-service:50051", "client_volume", volume_data)
+        volume_queue = Queue(1)
+        client_volume = ClientVolume(request.id, "volume-service:50051", "client_volume", volume_queue)
         client_volume.start()
 
         # thread client volume
-        weather_data = {"weather" : "unavailable"}
-        client_weather = Weather("client_weather", model_camera["latitude"], model_camera["longitude"], weather_data)
+        weather_queue = Queue(1)
+        client_weather = Weather("client_weather", model_camera["latitude"], model_camera["longitude"], weather_queue)
         client_weather.start()
 
         # myLock.acquire(True)
@@ -58,26 +60,32 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         # myLock.release()
 
         def join_thread():
+
             client_density.stop()
             client_volume.stop()
-            client_weather.stop()
-            
-            client_density.exit()
-            client_volume.exit()
-            client_weather.exit()
+            client_weather.stop() 
+
+            # client_density.exit()
+            # client_volume.exit()
+            # client_weather.exit()
 
             client_density.join()
             client_volume.join()
             client_weather.join()
 
-            # myLock.acquire(True)
-            # print("finish-thread active: %d" % (threading.active_count()))
+            myLock.acquire(True)
+            print("finish-thread %d active: %d" % (request.id,threading.active_count()))
             # print(threading.enumerate())
-            # myLock.release()
+            # print("finish akhir")
+            myLock.release()
 
         context.add_callback(join_thread)
         
         while True:
+            density_data = density_queue.get()
+            volume_data = volume_queue.get()
+            weather_data = weather_queue.get()
+
             current_weather = weather_data["weather"]
 
             if density_data["density"] == "timeout" and volume_data["percentage"] != "timeout":
