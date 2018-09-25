@@ -14,10 +14,10 @@
 
 """The Python implementation of the GRPC helloworld.Greeter client."""
 
+from Queue import Full, Empty
 import grpc
 import threading
 import time
-from Queue import LifoQueue, Full
 
 import densityContract_pb2
 import densityContract_pb2_grpc
@@ -60,6 +60,15 @@ class ClientDensity(threading.Thread):
               continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
+            # cleanup queue
+            while True:
+              try:
+                  data = self.data.get_nowait()
+              except Empty:
+                  self.data.close()
+                  break
+
+            self.data.join_thread()
             myLock.acquire(True)
             print("density cancelled")
             myLock.release()
@@ -105,6 +114,15 @@ class ClientVolume(threading.Thread):
               continue
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
+            # cleanup queue
+            while True:
+              try:
+                  data = self.data.get_nowait()
+              except Empty:
+                  self.data.close()
+                  break
+
+            self.data.join_thread()
             myLock.acquire(True)
             print("volume cancelled")
             myLock.release()

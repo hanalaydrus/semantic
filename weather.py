@@ -1,4 +1,4 @@
-from Queue import LifoQueue, Full
+from Queue import Full, Empty
 import requests
 import threading
 import time
@@ -18,11 +18,25 @@ class Weather(threading.Thread):
         self.data = data
         self.startRequest = True
         self.weather = "unavailable"
-        self.startService = True
+        self.exitFlag = False
         self.timer = threading.Timer(600, set_start_request, args=(self.startRequest,))
 
     def run(self):
-        while self.startService:
+        while True:
+            if self.exitFlag:
+                while True:
+                    try:
+                        data = self.data.get_nowait()
+                    except Empty:
+                        self.data.close()
+                        break
+
+                self.data.join_thread()
+                myLock.acquire(True)
+                print("weather cancelled")
+                myLock.release()
+                break
+
             if self.startRequest:
                 try:
                     requestLocationKey = requests.get("http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=zUAxVR88QcZr5j4hpl4IxMUnuxixTnfd&q="+ self.latitude +","+ self.longitude)
@@ -61,6 +75,6 @@ class Weather(threading.Thread):
                 continue
 
     def stop(self):
-        self.startService = False
+        self.exitFlag = True
         self.timer.cancel()
 

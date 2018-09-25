@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """The Python implementation of the GRPC helloworld.Greeter server."""
-from Queue import Queue
+from Queue import Empty
 from concurrent import futures
 
 from client import ClientDensity, ClientVolume 
@@ -22,6 +22,7 @@ from model import Model
 
 import time
 import threading
+import multiprocessing
 
 import grpc
 
@@ -40,34 +41,24 @@ class Greeter(semanticContract_pb2_grpc.GreeterServicer):
         model_camera = model.request_data(request.id)
 
         # thread client density
-        density_queue = Queue(1)
+        density_queue = multiprocessing.Queue(1)
         client_density = ClientDensity(request.id, "density-service:50050", "client_density", density_queue)
         client_density.start()
 
         # thread client volume
-        volume_queue = Queue(1)
+        volume_queue = multiprocessing.Queue(1)
         client_volume = ClientVolume(request.id, "volume-service:50051", "client_volume", volume_queue)
         client_volume.start()
 
         # thread client volume
-        weather_queue = Queue(1)
+        weather_queue = multiprocessing.Queue(1)
         client_weather = Weather("client_weather", model_camera["latitude"], model_camera["longitude"], weather_queue)
         client_weather.start()
 
-        # myLock.acquire(True)
-        # print("start-thread active: %d" % (threading.active_count()))
-        # print(threading.enumerate())
-        # myLock.release()
-
         def join_thread():
-
             client_density.stop()
             client_volume.stop()
-            client_weather.stop() 
-
-            # client_density.exit()
-            # client_volume.exit()
-            # client_weather.exit()
+            client_weather.stop()
 
             client_density.join()
             client_volume.join()
