@@ -26,12 +26,12 @@ class Weather(threading.Thread):
             if self.exitFlag:
                 while True:
                     try:
-                        data = self.data.get_nowait()
+                        self.data.get_nowait()
                     except Empty:
                         self.data.close()
                         break
-
                 self.data.join_thread()
+                
                 myLock.acquire(True)
                 print("weather cancelled")
                 myLock.release()
@@ -44,6 +44,7 @@ class Weather(threading.Thread):
                     print("Request Failed, problem with connection")
                     try:
                         self.data.put_nowait({'weather': self.weather})
+                        continue
                     except Full:
                       continue
 
@@ -56,6 +57,7 @@ class Weather(threading.Thread):
                         print("Request Failed, problem with connection")
                         try:
                             self.data.put_nowait({'weather': self.weather})
+                            continue
                         except Full:
                             continue
 
