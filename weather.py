@@ -1,67 +1,82 @@
-from Queue import Full
+from Queue import Full, Empty
 import requests
 import threading
 import time
 
-
 exitFlag = 0
+myLock = threading.Lock()
 
 def set_start_request(startRequest):
     startRequest = True
 
 class Weather(threading.Thread):
-    def __init__(self, threadName, latitude, longitude, queue=None):
+    def __init__(self, threadName, latitude, longitude, data):
         threading.Thread.__init__(self)
         self.threadName = threadName
         self.latitude = latitude
         self.longitude = longitude
-        self.queue = queue
+        self.data = data
         self.startRequest = True
         self.weather = "unavailable"
-        self.startService = True
+        self.exitFlag = False
+        self.timer = threading.Timer(600, set_start_request, args=(self.startRequest,))
 
     def run(self):
-        if exitFlag:
-            self.threadName.exit()
-        while self.startService:
+        while True:
+            if self.exitFlag:
+                while True:
+                    try:
+                        self.data.get_nowait()
+                    except Empty:
+                        self.data.close()
+                        break
+                self.data.join_thread()
+                
+                myLock.acquire(True)
+                print("weather cancelled")
+                myLock.release()
+                break
+
             if self.startRequest:
                 try:
-                    requestLocationKey = requests.get('http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=zUAxVR88QcZr5j4hpl4IxMUnuxixTnfd&q='+ self.latitude +','+ self.longitude)
+                    requestLocationKey = requests.get("http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=zUAxVR88QcZr5j4hpl4IxMUnuxixTnfd&q="+ self.latitude +","+ self.longitude)
                 except Exception:
                     print("Request Failed, problem with connection")
                     try:
-                        self.queue.put_nowait({'weather': self.weather})
-                    except Full:
+                        self.data.put_nowait({'weather': self.weather})
                         continue
-                    continue
+                    except Full:
+                      continue
 
                 if requestLocationKey.status_code == 200:
                     responseLocationKey = requestLocationKey.json()
-                    locationKey = responseLocationKey['Key']
+                    locationKey = responseLocationKey["Key"]
                     try:
-                        requestsCurrentWeather = requests.get('http://dataservice.accuweather.com/currentconditions/v1/'+ locationKey +'?apikey=zUAxVR88QcZr5j4hpl4IxMUnuxixTnfd&language=id-ID')
+                        requestsCurrentWeather = requests.get("http://dataservice.accuweather.com/currentconditions/v1/"+ locationKey +"?apikey=zUAxVR88QcZr5j4hpl4IxMUnuxixTnfd&language=id-ID")
                     except Exception:
                         print("Request Failed, problem with connection")
                         try:
-                            self.queue.put_nowait({'weather': self.weather})
+                            self.data.put_nowait({'weather': self.weather})
+                            continue
                         except Full:
                             continue
-                        continue
 
                     if requestsCurrentWeather.status_code == 200:
                         responseCurrentWeather = requestsCurrentWeather.json()
-                        self.weather = responseCurrentWeather[0]['WeatherText']
+                        self.weather = responseCurrentWeather[0]["WeatherText"]
                     else:
-                        print ('Request Current Weather Failed')
+                        print ("Request Current Weather Failed")
                 else:
-                    print('Request Location Key Failed')
+                    print("Request Location Key Failed")
                 self.startRequest = False
-                t = threading.Timer(600, set_start_request(self.startRequest))
-                t.start()
+                self.timer.start()
+
             try:
-                self.queue.put_nowait({'weather': self.weather})
+                self.data.put_nowait({'weather': self.weather})
             except Full:
                 continue
 
     def stop(self):
-        self.startService = False
+        self.exitFlag = True
+        self.timer.cancel()
+

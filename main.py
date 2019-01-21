@@ -1,8 +1,14 @@
 from server import Server
+import stacktracer
 
 if __name__ == '__main__':
-	
-    serverSemantic = Server("serverSemantic")
+	# stacktracer.trace_start("trace.html",interval=5,auto=True)
 
-    serverSemantic.start()
+	serverSemantic = Server("serverSemantic")
+
+	serverSemantic.start()
+
+	serverSemantic.join()
+
+	# stacktracer.trace_stop()
     

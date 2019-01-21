@@ -14,8 +14,7 @@
 
 """The Python implementation of the GRPC helloworld.Greeter client."""
 
-from __future__ import print_function
-from Queue import LifoQueue, Full
+from Queue import Full, Empty
 import grpc
 import threading
 import time
@@ -26,31 +25,49 @@ import densityContract_pb2_grpc
 import volumeContract_pb2
 import volumeContract_pb2_grpc
 
-exitFlag = 0
+myLock = threading.Lock()
 
 class ClientDensity(threading.Thread):
-  def __init__(self, camera_id, ipaddress, threadName, queue=None):
+  def __init__(self, camera_id, ipaddress, threadName, data):
     threading.Thread.__init__(self)
     self.ipaddress = ipaddress
     self.camera_id = camera_id
     self.threadName = threadName
-    self.queue = queue
+    self.data = data
     self.response = None
+    self.exit = False
 
   def run(self):
-    if exitFlag:
-      self.threadName.exit()
     #Create connection
     channel = grpc.insecure_channel(self.ipaddress)
     while True:
+      process = grpc.channel_ready_future(channel)
+      # exit flag
+      if self.exit:
+        while True:
+          try:
+              self.data.get_nowait()
+          except Empty:
+              self.data.close()
+              break
+        self.data.join_thread()
+        process.cancel()
+        myLock.acquire(True)
+        print("density cancelled")
+        myLock.release()
+        break
+      # connect to density
       try:
-        grpc.channel_ready_future(channel).result(timeout=5)
+        process.result(timeout=5)
       except grpc.FutureTimeoutError:
+        print("density timeout")
         self.response = None
-        try:
-          self.queue.put_nowait({'density': 'timeout'})
-        except Full:
-          continue
+        process.cancel()
+        while not self.exit:
+          try:
+            self.data.put_nowait({'density': None})
+          except Full:
+            pass
       else:
         stub = densityContract_pb2_grpc.GreeterStub(channel)
         response = stub.SayHello(densityContract_pb2.HelloRequest(id=self.camera_id))
@@ -58,44 +75,68 @@ class ClientDensity(threading.Thread):
         try:
           for resp in self.response:
             try:
-              self.queue.put_nowait({'density': resp.response})
+              self.data.put_nowait({'density': resp.response})
             except Full:
-              continue
+              pass
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
-            print('cancelled')
-            break
+            print("connection to density cancelled")
           elif e.code() == grpc.StatusCode.UNAVAILABLE:
-            print('unavailable')
-            continue
+            print("density unavailable")
+
+          self.response = None
+          while not self.exit:
+            try:
+              self.data.put_nowait({'density': None})
+            except Full:
+              pass
   
   def stop(self):
+    self.exit = True
     if self.response != None:
       self.response.cancel()
-
+      
 class ClientVolume(threading.Thread):
-  def __init__(self, camera_id, ipaddress, threadName, queue=None):
+  def __init__(self, camera_id, ipaddress, threadName, data):
     threading.Thread.__init__(self)
     self.ipaddress = ipaddress
     self.camera_id = camera_id
     self.threadName = threadName
-    self.queue = queue
+    self.data = data
     self.response = None
+    self.exit = False
 
   def run(self):
-    if exitFlag:
-      self.threadName.exit()
     #Create connection
     channel = grpc.insecure_channel(self.ipaddress)
     while True:
-      try:
-        grpc.channel_ready_future(channel).result(timeout=5)
+      process = grpc.channel_ready_future(channel)
+      # exit flag
+      if self.exit:
+        while True:
+          try:
+              self.data.get_nowait()
+          except Empty:
+              self.data.close()
+              break
+        self.data.join_thread()
+        process.cancel()
+        myLock.acquire(True)
+        print("volume cancelled")
+        myLock.release()
+        break
+      # connect to volume service
+      try:     
+        process.result(timeout=5)
       except grpc.FutureTimeoutError:
+        print("volume timeout")
         self.response = None
-        try:
-          self.queue.put_nowait({'percentage': 'timeout'})
-        except Full:
-          continue
+        process.cancel()
+        while not self.exit:
+          try:
+            self.data.put_nowait({'percentage': None})
+          except Full:
+            pass
       else:
         stub = volumeContract_pb2_grpc.GreeterStub(channel)
         response = stub.SayHello(volumeContract_pb2.HelloRequest(id=self.camera_id))
@@ -103,17 +144,24 @@ class ClientVolume(threading.Thread):
         try:
           for resp in self.response:
             try:
-              self.queue.put_nowait({'volume': resp.volume, 'percentage': resp.percentage})
+              self.data.put_nowait({'volume': resp.volume, 'percentage': resp.percentage})
             except Full:
-              continue
+              pass
         except grpc.RpcError as e:
           if e.code() == grpc.StatusCode.CANCELLED:
-            print('cancelled')
-            break
+            print("connection to volume cancelled")
           elif e.code() == grpc.StatusCode.UNAVAILABLE:
-            print('unavailable')
-            continue
+            print("volume unavailable")
+
+          self.response = None
+          while not self.exit:
+            try:
+              self.data.put_nowait({'percentage': None})
+            except Full:
+              pass
 
   def stop(self):
+    self.exit = True
     if self.response != None:
       self.response.cancel()
+    
