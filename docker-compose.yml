@@ -13,12 +13,12 @@ services:
     restart: always
     networks:
       - default
-      - camera_default
+      - camera-service_default
       - volume-of-vehicles-cpp_default
       - density-of-vehicles_default
 
 networks:
-  camera_default:
+  camera-service_default:
     external: true
   volume-of-vehicles-cpp_default:
     external: true
